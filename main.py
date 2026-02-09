@@ -5,6 +5,14 @@ import re
 import json
 import os
 import aiohttp
+import logging
+
+# Enable detailed logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 bot = Bot("8263898247:AAEjfKb2d8PdGLefAVBk7TdHtm0Q81Cot8o")
 dp = Dispatcher()
@@ -81,12 +89,23 @@ async def send_colored_buttons(chat_id: int, text: str):
         }
     }
     
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=payload) as response:
-            return await response.json()
+    logger.info(f"Sending colored buttons to chat_id: {chat_id}")
+    logger.info(f"Payload: {json.dumps(payload, indent=2)}")
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload) as response:
+                result = await response.json()
+                logger.info(f"Telegram API Response: {json.dumps(result, indent=2)}")
+                return result
+    except Exception as e:
+        logger.error(f"Error sending colored buttons: {e}")
+        return {"ok": False, "description": str(e)}
 
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message):
+    logger.info(f"Received /start from user: {message.from_user.id}")
+    
     emojis = load_emojis()
     
     emoji_text = "Test "
@@ -97,7 +116,10 @@ async def start_cmd(message: types.Message):
     result = await send_colored_buttons(message.chat.id, emoji_text.strip())
     
     if not result.get("ok"):
-        # Fallback to normal buttons if colored buttons fail
+        logger.warning(f"Colored buttons failed: {result.get('description')}")
+        logger.info("Falling back to normal buttons")
+        
+        # Fallback to normal buttons
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
             [
                 types.InlineKeyboardButton(text="😎 Blue", callback_data="blue"),
@@ -110,11 +132,43 @@ async def start_cmd(message: types.Message):
         ])
         
         await message.answer(emoji_text.strip(), parse_mode="HTML", reply_markup=keyboard)
+    else:
+        logger.info("✅ Colored buttons sent successfully!")
 
 @dp.message(Command("buttons"))
 async def colored_buttons_demo(message: types.Message):
     """Demo command for colored buttons"""
-    await send_colored_buttons(message.chat.id, "Choose a colored button:")
+    logger.info(f"Received /buttons from user: {message.from_user.id}")
+    
+    result = await send_colored_buttons(message.chat.id, "Choose a colored button:")
+    
+    if not result.get("ok"):
+        await message.answer(f"❌ Error: {result.get('description', 'Unknown error')}")
+
+@dp.message(Command("test"))
+async def test_premium(message: types.Message):
+    """Test if bot can use premium features"""
+    
+    try:
+        # Get bot info
+        bot_info = await bot.get_me()
+        logger.info(f"Bot info: {bot_info}")
+        
+        # Try to send a message with custom emoji
+        test_msg = await message.answer(
+            'Premium test: <tg-emoji emoji-id="6334598469746952256">🌸</tg-emoji>',
+            parse_mode="HTML"
+        )
+        
+        await message.answer(
+            f"✅ Bot username: @{bot_info.username}\n"
+            f"✅ Custom emoji sent successfully!\n"
+            f"✅ Bot can use premium features"
+        )
+        
+    except Exception as e:
+        logger.error(f"Premium test failed: {e}")
+        await message.answer(f"❌ Error: {e}")
 
 @dp.message(Command("add"))
 async def add_emoji_cmd(message: types.Message):
@@ -170,15 +224,17 @@ async def clear_emojis_cmd(message: types.Message):
 
 @dp.callback_query()
 async def handle_callback(callback: types.CallbackQuery):
+    logger.info(f"Button clicked: {callback.data} by user: {callback.from_user.id}")
     await callback.answer(f"You clicked: {callback.data}")
-    
-    # Send response with colored buttons
-    response_text = f"✅ You selected: {callback.data}"
-    await send_colored_buttons(callback.message.chat.id, response_text)
+    await callback.message.answer(f"✅ You selected: {callback.data}")
 
 async def main():
-    print("Bot started with colored button support!")
-    print("Note: Colored buttons require premium bot owner")
+    logger.info("="*50)
+    logger.info("Bot starting...")
+    logger.info("Colored button support: ENABLED")
+    logger.info("Premium features: ENABLED (if bot owner has premium)")
+    logger.info("="*50)
+    
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
