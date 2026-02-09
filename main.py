@@ -2,7 +2,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 import asyncio
 
-bot = Bot("8263898247:AAEjfKb2d8PdGLefAVBk7TdHtm0Q81Cot8o")
+bot = Bot("8291699798:AAGdK_1K8DKw7hrfG0XmlnSsiq0g5U3uvv8")
 dp = Dispatcher()
 
 @dp.message(Command("start"))
