@@ -47,33 +47,19 @@ def parse_emoji(text):
 async def start_cmd(message: types.Message):
     emojis = load_emojis()
     
-    # Create message with custom emojis
     emoji_text = "Test "
     for emoji in emojis:
         emoji_text += f'<tg-emoji emoji-id="{emoji["id"]}">{emoji["fallback"]}</tg-emoji> '
     
-    # Buttons with custom emoji and colors (NEW in Bot API 9.4)
+    # Simple buttons (without colors)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(
-                text="😎 Blue",
-                callback_data="blue",
-                # style parameter for button color (NEW!)
-            ),
-            InlineKeyboardButton(
-                text="🔥 Red", 
-                callback_data="red",
-            ),
-            InlineKeyboardButton(
-                text="💚 Green",
-                callback_data="green",
-            )
+            InlineKeyboardButton(text="😎 Blue", callback_data="blue"),
+            InlineKeyboardButton(text="🔥 Red", callback_data="red"),
+            InlineKeyboardButton(text="💚 Green", callback_data="green")
         ],
         [
-            InlineKeyboardButton(
-                text="Default Button",
-                callback_data="default"
-            )
+            InlineKeyboardButton(text="Default Button", callback_data="default")
         ]
     ])
     
@@ -82,6 +68,86 @@ async def start_cmd(message: types.Message):
         parse_mode="HTML",
         reply_markup=keyboard
     )
+
+@dp.message(Command("buttons"))
+async def colored_buttons_cmd(message: types.Message):
+    """Colored buttons with custom emoji (Bot API 9.4)"""
+    
+    # Create keyboard data manually for colored buttons
+    keyboard_json = {
+        "inline_keyboard": [
+            [
+                {
+                    "text": "😎 Blue",
+                    "callback_data": "blue_colored",
+                    "style": "blue"  # NEW: Button background color
+                },
+                {
+                    "text": "🔥 Red",
+                    "callback_data": "red_colored",
+                    "style": "red"
+                },
+                {
+                    "text": "💚 Green",
+                    "callback_data": "green_colored",
+                    "style": "green"
+                }
+            ],
+            [
+                {
+                    "text": "Default Button",
+                    "callback_data": "default_colored"
+                    # No style = default gray
+                }
+            ]
+        ]
+    }
+    
+    await message.answer(
+        "Choose a colored button:",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="😎 Blue", callback_data="blue"),
+                    types.InlineKeyboardButton(text="🔥 Red", callback_data="red"),
+                    types.InlineKeyboardButton(text="💚 Green", callback_data="green")
+                ],
+                [
+                    types.InlineKeyboardButton(text="Default", callback_data="default")
+                ]
+            ]
+        )
+    )
+    
+    # Note: Colored buttons currently need raw API call
+    # Aiogram doesn't fully support 'style' parameter yet
+
+@dp.message(Command("advanced"))
+async def advanced_buttons_cmd(message: types.Message):
+    """Advanced colored buttons using raw API"""
+    
+    # Manual API call for colored buttons
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "😎 Blue", "callback_data": "blue", "style": "blue"},
+                {"text": "🔥 Red", "callback_data": "red", "style": "red"},
+                {"text": "💚 Green", "callback_data": "green", "style": "green"}
+            ],
+            [
+                {"text": "Default Button", "callback_data": "default"}
+            ]
+        ]
+    }
+    
+    try:
+        await bot.send_message(
+            chat_id=message.chat.id,
+            text="Advanced colored buttons (Bot API 9.4):",
+            reply_markup=keyboard
+        )
+    except Exception as e:
+        await message.answer(f"Error: {e}\n\nNote: Colored buttons require Bot API 9.4 and premium bot owner.")
 
 @dp.message(Command("add"))
 async def add_emoji_cmd(message: types.Message):
@@ -114,43 +180,6 @@ async def add_emoji_cmd(message: types.Message):
     else:
         await message.answer("❌ Error saving emoji.")
 
-@dp.message(Command("buttons"))
-async def buttons_demo(message: types.Message):
-    """Demo of new colored buttons with custom emoji"""
-    
-    # Note: icon_custom_emoji_id parameter available in newer aiogram versions
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text="🌸 Flower",
-                callback_data="flower",
-                # Future: icon_custom_emoji_id="6334598469746952256"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="❤️ Heart",
-                callback_data="heart",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="🎈 Balloon",
-                callback_data="balloon",
-            )
-        ]
-    ])
-    
-    await message.answer(
-        "Choose an emoji button:",
-        reply_markup=keyboard
-    )
-
-@dp.callback_query()
-async def handle_callback(callback: types.CallbackQuery):
-    await callback.answer(f"You clicked: {callback.data}")
-    await callback.message.answer(f"✅ Selected: {callback.data}")
-
 @dp.message(Command("list"))
 async def list_emojis_cmd(message: types.Message):
     emojis = load_emojis()
@@ -172,9 +201,14 @@ async def clear_emojis_cmd(message: types.Message):
     else:
         await message.answer("❌ Error resetting.")
 
+@dp.callback_query()
+async def handle_callback(callback: types.CallbackQuery):
+    await callback.answer(f"You clicked: {callback.data}")
+    await callback.message.answer(f"✅ Selected: {callback.data}")
+
 async def main():
-    print("Bot started with Bot API 9.4 support!")
+    print("Bot started with colored button support!")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    asyncio.run(main())  # () add karo
+    asyncio.run(main())
