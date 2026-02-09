@@ -52,7 +52,7 @@ async def start_cmd(message: types.Message):
     emojis = load_emojis()
     
     # Create message with all emojis
-    emoji_text = "Test "
+    emoji_text = "I am Bad "
     for emoji in emojis:
         emoji_text += f'<tg-emoji emoji-id="{emoji["id"]}">{emoji["fallback"]}</tg-emoji> '
     
