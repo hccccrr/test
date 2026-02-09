@@ -120,22 +120,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-```
-
-**Features:**
-
-1. **Default emojis** - Sabhi emojis jo aapne diye vo default hai
-2. **/start** - Sabhi saved emojis dikhata hai
-3. **/add** - Naya emoji add karta hai
-4. **/list** - Sabhi saved emojis list karta hai
-5. **/clear** - Default emojis restore karta hai
-
-**Safe features:**
-- Invalid emoji format ignore hoti hai, bot crash nahi hota
-- Duplicate emojis add nahi hote
-- File operations me error handling hai
-- Emojis `emojis.json` file me save hote hai
-
-**Usage:**
-```
-/add <tg-emoji emoji-id="6073590322166763941">🎈</tg-emoji>
