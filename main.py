@@ -8,7 +8,7 @@ dp = Dispatcher()
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message):
     await message.answer(
-        'Test <tg-emoji emoji-id="6334598469746952256">🌸</tg-emoji>',
+        'HAT THARI MAAA KII CHHHUNI <tg-emoji emoji-id="6334598469746952256">🌸</tg-emoji>',
         parse_mode="HTML"
     )
 
