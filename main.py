@@ -1,68 +1,141 @@
-from aiogram import Bot, Dispatcher, types, F
+from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 import asyncio
+import re
 import json
 import os
 
 bot = Bot("8263898247:AAEjfKb2d8PdGLefAVBk7TdHtm0Q81Cot8o")
 dp = Dispatcher()
 
+# File to store emojis
 EMOJI_FILE = "emojis.json"
 
-def load_emojis():
-    if os.path.exists(EMOJI_FILE):
-        with open(EMOJI_FILE, 'r') as f:
-            return json.load(f)
-    return {"premium_on": False, "emojis": []}
+# Default emojis
+DEFAULT_EMOJIS = [
+    {"id": "6334598469746952256", "fallback": "🌸"},
+    {"id": "6082358463541809815", "fallback": "😳"},
+    {"id": "6073197143680619201", "fallback": "🤍"},
+    {"id": "6073590322166763941", "fallback": "🎈"},
+    {"id": "6070852396479683965", "fallback": "❤"}
+]
 
-def save_emojis(data):
-    with open(EMOJI_FILE, 'w') as f:
-        json.dump(data, f)
+def load_emojis():
+    """Load emojis from file or return defaults"""
+    if os.path.exists(EMOJI_FILE):
+        try:
+            with open(EMOJI_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return DEFAULT_EMOJIS
+    return DEFAULT_EMOJIS
+
+def save_emojis(emojis):
+    """Save emojis to file"""
+    try:
+        with open(EMOJI_FILE, 'w', encoding='utf-8') as f:
+            json.dump(emojis, f, ensure_ascii=False, indent=2)
+        return True
+    except:
+        return False
+
+def parse_emoji(text):
+    """Extract emoji-id from tg-emoji tag"""
+    pattern = r'<tg-emoji emoji-id="(\d+)">(.+?)</tg-emoji>'
+    match = re.search(pattern, text)
+    if match:
+        return {"id": match.group(1), "fallback": match.group(2)}
+    return None
 
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message):
-    data = load_emojis()
+    emojis = load_emojis()
     
-    if data["premium_on"] and data["emojis"]:
-        text = "Welcome! "
-        for em in data["emojis"]:
-            text += f'<tg-emoji emoji-id="{em["id"]}">{em["emoji"]}</tg-emoji> '
-        await message.answer(text, parse_mode="HTML")
-    else:
-        await message.answer("Welcome! 👍 🔥 ❤️ 😂 🎉")
-
-@dp.message(Command("premium_on"))
-async def premium_on(message: types.Message):
-    data = load_emojis()
-    data["premium_on"] = True
-    save_emojis(data)
-    await message.answer("✅ Premium ON! Now send me emojis.")
-
-@dp.message(Command("premium_off"))
-async def premium_off(message: types.Message):
-    data = load_emojis()
-    data["premium_on"] = False
-    save_emojis(data)
-    await message.answer("❌ Premium OFF!")
-
-@dp.message(F.entities)
-async def add_emoji(message: types.Message):
-    data = load_emojis()
+    # Create message with all emojis
+    emoji_text = "Test "
+    for emoji in emojis:
+        emoji_text += f'<tg-emoji emoji-id="{emoji["id"]}">{emoji["fallback"]}</tg-emoji> '
     
-    if not data["premium_on"]:
+    await message.answer(emoji_text.strip(), parse_mode="HTML")
+
+@dp.message(Command("add"))
+async def add_emoji_cmd(message: types.Message):
+    # Get text after /add command
+    command_text = message.text.strip()
+    
+    # Remove /add from the beginning
+    emoji_part = command_text.replace("/add", "", 1).strip()
+    
+    if not emoji_part:
+        await message.answer("❌ Use: /add <tg-emoji emoji-id=\"123\">😊</tg-emoji>")
         return
     
-    if message.entities:
-        for entity in message.entities:
-            if entity.type == "custom_emoji":
-                emoji_char = message.text[entity.offset:entity.offset + entity.length]
-                
-                if not any(e["id"] == entity.custom_emoji_id for e in data["emojis"]):
-                    data["emojis"].append({"id": entity.custom_emoji_id, "emoji": emoji_char})
-                    save_emojis(data)
-                    await message.answer(f"✅ Added! Check /start")
+    # Parse emoji
+    emoji_data = parse_emoji(emoji_part)
+    
+    if not emoji_data:
+        await message.answer("❌ Invalid emoji format. Ignored.")
+        return
+    
+    # Load current emojis
+    emojis = load_emojis()
+    
+    # Check if emoji already exists
+    if any(e["id"] == emoji_data["id"] for e in emojis):
+        await message.answer("⚠️ Emoji already exists!")
+        return
+    
+    # Add new emoji
+    emojis.append(emoji_data)
+    
+    # Save
+    if save_emojis(emojis):
+        await message.answer(f'✅ Emoji added: <tg-emoji emoji-id="{emoji_data["id"]}">{emoji_data["fallback"]}</tg-emoji>', parse_mode="HTML")
+    else:
+        await message.answer("❌ Error saving emoji. Try again.")
+
+@dp.message(Command("list"))
+async def list_emojis_cmd(message: types.Message):
+    emojis = load_emojis()
+    
+    if not emojis:
+        await message.answer("No emojis saved.")
+        return
+    
+    emoji_text = "Saved emojis:\n\n"
+    for i, emoji in enumerate(emojis, 1):
+        emoji_text += f'{i}. <tg-emoji emoji-id="{emoji["id"]}">{emoji["fallback"]}</tg-emoji>\n'
+    
+    await message.answer(emoji_text, parse_mode="HTML")
+
+@dp.message(Command("clear"))
+async def clear_emojis_cmd(message: types.Message):
+    if save_emojis(DEFAULT_EMOJIS):
+        await message.answer("✅ Emoji list reset to defaults!")
+    else:
+        await message.answer("❌ Error resetting emojis.")
 
 async def main():
     await dp.start_polling(bot)
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+**Features:**
+
+1. **Default emojis** - Sabhi emojis jo aapne diye vo default hai
+2. **/start** - Sabhi saved emojis dikhata hai
+3. **/add** - Naya emoji add karta hai
+4. **/list** - Sabhi saved emojis list karta hai
+5. **/clear** - Default emojis restore karta hai
+
+**Safe features:**
+- Invalid emoji format ignore hoti hai, bot crash nahi hota
+- Duplicate emojis add nahi hote
+- File operations me error handling hai
+- Emojis `emojis.json` file me save hote hai
+
+**Usage:**
+```
+/add <tg-emoji emoji-id="6073590322166763941">🎈</tg-emoji>
